@@ -1,12 +1,14 @@
 from tkinter import *
 from PIL import Image, ImageDraw
 from tensorflow import keras
+import numpy as np
 
 canvas_width = 500
 canvas_height = 500
 
 cv_img = Image.new("RGB", (canvas_width, canvas_height), (255, 255, 255))
 draw = ImageDraw.Draw(cv_img)
+model = keras.models.load_model("model.h5")
 
 
 def paint(event):
@@ -19,10 +21,15 @@ def paint(event):
 
 def predict():
 	#image pre-processing
-
-	prediction_message.configure(text="Prediction = 5")
-	cv_img.save("saved_img.jpg")
-
+	np_img = np.asarray(cv_img)
+	gray = np.dot(np_img[...,:], [0.299, 0.587, 0.114])  
+	gray28x28 = transform.resize(gray, (img_rows, img_cols))  
+	vectorized_filter = np.vectorize(lambda v: 255 if v > 128 else v)  
+	filtered = vectorized_filter(gray28x28)
+	batch = np.array([filtered])
+	prediction_list = model.predict(batch)
+	prediction = np.where(prediction_list == 1)[1][0]
+	prediction_message.configure(text=f"Prediction = {prediction}")
 
 def clear():
 	global cv_img, draw
@@ -40,6 +47,9 @@ cv.bind("<B1-Motion>", paint)
 
 message = Label(master, text="Press and Drag the mouse to draw")
 message.pack(side=BOTTOM)
+
+prediction_message = Label(master, text="Prediction = None")
+prediction_message.pack(side=BOTTOM)
 
 predict_button = Button(master, text= "Predict", command = predict)
 predict_button.pack( side = BOTTOM )
